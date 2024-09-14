@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserType {
+  SOS
+  VISITOR
+  TRAVELER
+  ADMIN_TRAV
+}
+
+enum UserStatus {
+  pending
+  accepted
+  refused
+}
+
+model User {
+  id              Int         @id @default(autoincrement())
+  firstname       String      @db.VarChar(255)
+  lastname        String      @db.VarChar(255)
+  email           String      @unique @db.VarChar(255)
+  password        String
+  isAdmin         Boolean     @default(false)
+  type            UserType    @default(SOS)
+  status          UserStatus  @default(pending)
+  telephone       String      @db.VarChar(255)
+  avatar          String      @default("default_pdp.png") @db.VarChar(255)
+  applications    Application[] // 1:n relationship with Application
+  requests        Request[]
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Relations to Message model
+  adminMessages   Message[]   @relation("AdminTravelerMessages")
+  travelerMessages Message[]  @relation("TravelerMessages")
+}
+
+enum ApplicationStatus {
+  pending
+  validated
+  accepted
+}
+
+model Application {
+  id           Int         @id @default(autoincrement())
+  destination  Destination @relation(fields: [destinationId], references: [id])
+  destinationId Int
+
+  traveler     User        @relation(fields: [travelerId], references: [id])
+  travelerId   Int
+
+  directory    String
+
+  documents    Document[]
+  validated    ApplicationStatus @default(pending) // Enum for status
+  dateTime     DateTime    @default(now())
+
+  messages     Message[]   @relation("ApplicationMessages") // Relation to Message
+}
+
+model Document {
+  id          Int         @id @default(autoincrement())
+  typeId      Int
+  type        TypeDocument @relation(fields: [typeId], references: [id]) // Foreign key relation
+  path        String
+  applicationId   Int
+  application  Application  @relation(fields: [applicationId], references: [id]) // Many-to-many relation with Application
+}
+
+enum DocumentExtension {
+  PDF
+  JPG
+  PNG
+}
+
+model TypeDocument {
+  id           Int          @id @default(autoincrement())
+  name         String       @db.VarChar(255)
+  extension    DocumentExtension
+  removed      Boolean      @default(false)
+  destinations Destination[] @relation("TypeDocumentDestinations") // Many-to-many relationship
+  documents    Document[]
+}
+
+model Destination {
+  id           Int           @id @default(autoincrement())
+  name         String        @db.VarChar(255)
+  description  String        @db.Text
+  directory    String        @db.VarChar(255)
+  pictures     String[]      // Array of strings for picture URLs
+  requirements TypeDocument[] @relation("TypeDocumentDestinations") // Many-to-many relationship with TypeDocument
+  removed      Boolean       @default(false)
+
+  applications Application[] // Relation to Application
+}
+
+model Message {
+  id             Int        @id @default(autoincrement())
+  applicationId  Int
+  adminTravelerId Int
+  travelerId     Int
+  content        String     @db.Text
+  dateTime       DateTime   @default(now())
+  seen           Boolean    @default(false)
+
+  application    Application @relation("ApplicationMessages", fields: [applicationId], references: [id])
+  adminTraveler  User        @relation("AdminTravelerMessages", fields: [adminTravelerId], references: [id])
+  traveler       User        @relation("TravelerMessages", fields: [travelerId], references: [id])
+}
+
+model Request {
+  id         Int       @id @default(autoincrement())
+  visitorId  Int
+  visit_to   String     @db.VarChar(255)
+  LTN        Int        @db.SmallInt
+  date_visit DateTime
+  status     RequestStatus @default(pending)
+
+  visitor    User       @relation(fields: [visitorId], references: [id])
+}
+
+enum RequestStatus {
+  pending
+  denied
+  approved
+}
