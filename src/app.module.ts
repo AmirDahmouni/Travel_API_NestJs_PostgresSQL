@@ -8,10 +8,12 @@ import { TypeDocumentModule } from './type-document/type-document.module';
 import { DestinationModule } from './destination/destination.module';
 import { MessageModule } from './message/message.module';
 import { RequestModule } from './request/request.module';
+import { PrismaService } from './prisma.service';
 
 @Module({
   imports: [UserModule, ApplicationModule, DocumentModule, TypeDocumentModule, DestinationModule, MessageModule, RequestModule],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, PrismaService],
+  exports: [PrismaService]
 })
-export class AppModule {}
+export class AppModule { }
