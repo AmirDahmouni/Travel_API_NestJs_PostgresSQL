@@ -20,7 +20,6 @@ import { JwtService } from '@nestjs/jwt';
   imports: [UserModule, ApplicationModule, DocumentModule, TypeDocumentModule, DestinationModule, MessageModule, RequestModule, AuthModule],
   controllers: [AppController],
   providers: [AppService, PrismaService, AuthService, UserService, JwtService],
-  exports: [PrismaService, AuthModule]
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
