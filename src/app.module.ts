@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UserModule } from './user/user.module';
@@ -8,12 +8,22 @@ import { TypeDocumentModule } from './type-document/type-document.module';
 import { DestinationModule } from './destination/destination.module';
 import { MessageModule } from './message/message.module';
 import { RequestModule } from './request/request.module';
-import { PrismaService } from './prisma.service';
+import { PrismaService } from './utils/prisma.service';
+import { LoggerMiddleware } from './utils/logger.middleware';
+import helmet from 'helmet';
+import { AuthModule } from './auth/auth.module';
+import { AuthService } from './auth/auth.service';
 
 @Module({
-  imports: [UserModule, ApplicationModule, DocumentModule, TypeDocumentModule, DestinationModule, MessageModule, RequestModule],
+  imports: [UserModule, ApplicationModule, DocumentModule, TypeDocumentModule, DestinationModule, MessageModule, RequestModule, AuthModule],
   controllers: [AppController],
-  providers: [AppService, PrismaService],
+  providers: [AppService, PrismaService, AuthService],
   exports: [PrismaService]
 })
-export class AppModule { }
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(helmet(), LoggerMiddleware)
+      .forRoutes({ path: '/user', method: RequestMethod.ALL });
+  }
+}

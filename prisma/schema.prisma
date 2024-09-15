@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
 }
 
 datasource db {
@@ -40,6 +41,8 @@ model User {
   // Relations to Message model
   adminMessages   Message[]   @relation("AdminTravelerMessages")
   travelerMessages Message[]  @relation("TravelerMessages")
+
+  @@map("User")
 }
 
 enum ApplicationStatus {
@@ -63,6 +66,7 @@ model Application {
   dateTime     DateTime    @default(now())
 
   messages     Message[]   @relation("ApplicationMessages") // Relation to Message
+  @@map("Application")
 }
 
 model Document {
@@ -72,6 +76,8 @@ model Document {
   path        String
   applicationId   Int
   application  Application  @relation(fields: [applicationId], references: [id]) // Many-to-many relation with Application
+
+  @@map("Document")
 }
 
 enum DocumentExtension {
@@ -87,6 +93,7 @@ model TypeDocument {
   removed      Boolean      @default(false)
   destinations Destination[] @relation("TypeDocumentDestinations") // Many-to-many relationship
   documents    Document[]
+  @@map("TypeDocument")
 }
 
 model Destination {
@@ -99,6 +106,7 @@ model Destination {
   removed      Boolean       @default(false)
 
   applications Application[] // Relation to Application
+  @@map("Destination")
 }
 
 model Message {
@@ -113,6 +121,7 @@ model Message {
   application    Application @relation("ApplicationMessages", fields: [applicationId], references: [id])
   adminTraveler  User        @relation("AdminTravelerMessages", fields: [adminTravelerId], references: [id])
   traveler       User        @relation("TravelerMessages", fields: [travelerId], references: [id])
+  @@map("Message")
 }
 
 model Request {
@@ -124,6 +133,7 @@ model Request {
   status     RequestStatus @default(pending)
 
   visitor    User       @relation(fields: [visitorId], references: [id])
+  @@map("Request")
 }
 
 enum RequestStatus {
