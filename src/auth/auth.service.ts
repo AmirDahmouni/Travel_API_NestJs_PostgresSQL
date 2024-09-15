@@ -20,7 +20,7 @@ export class AuthService {
     // Create JWT token for the user
     const payload: JwtPayload = { id: user.id, email: user.email, isAdmin: user.isAdmin };
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token: this.jwtService.signAsync(payload, { secret: process.env.JWT_SECRET }),
     };
   }
 }

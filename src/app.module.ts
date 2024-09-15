@@ -15,9 +15,14 @@ import { AuthModule } from './auth/auth.module';
 import { AuthService } from './auth/auth.service';
 import { UserService } from './user/user.service';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
-  imports: [UserModule, ApplicationModule, DocumentModule, TypeDocumentModule, DestinationModule, MessageModule, RequestModule, AuthModule],
+  imports: [
+    UserModule, ApplicationModule, DocumentModule, TypeDocumentModule, DestinationModule, MessageModule, RequestModule, AuthModule,
+    ConfigModule.forRoot({
+      isGlobal: true, // This makes the config module available globally
+    })],
   controllers: [AppController],
   providers: [AppService, PrismaService, AuthService, UserService, JwtService],
 })

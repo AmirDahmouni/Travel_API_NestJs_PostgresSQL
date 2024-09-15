@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseFilters, UseGuards, ParseIntPipe, Req, ValidationPipe, UsePipes, HttpStatus, Res, Put } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseFilters, UseGuards, ParseIntPipe, Req, ValidationPipe, UsePipes, HttpStatus, Res, Put, BadRequestException, InternalServerErrorException, HttpCode } from '@nestjs/common';
 import { UserService } from './user.service';
 import { HttpExceptionFilter } from 'src/filters/http-excpetion.filter';
 import { JwtAuthGuard } from 'src/guards/auth.guard';
@@ -8,17 +8,80 @@ import { AuthService } from 'src/auth/auth.service';
 import { Response } from 'express';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User, UserStatus } from "@prisma/client"
+import { RegisterUserDto } from './dto/create-user.dto';
 
 @Controller('user')
-@UseGuards(JwtAuthGuard)
 @UseFilters(HttpExceptionFilter)
 
 export class UserController {
   constructor(private readonly userService: UserService, private readonly authService: AuthService) { }
 
-  @Get()
-  findAll() {
-    return this.userService.findAll();
+  @Get('')
+  async findAll(@Res() res: Response): Promise<{
+    statusCode: number;
+    data?: User[];
+    message?: string;
+  }> {
+    try {
+      const users = await this.userService.findAll();
+      const statusCode = users?.length > 0
+        ? HttpStatus.OK
+        : HttpStatus.NOT_FOUND;
+      return res.status(statusCode).send(users)
+    }
+    catch (err) {
+      throw new InternalServerErrorException(err.message, { cause: new Error(), description: 'Some error description' });
+    }
+
+  }
+
+  @Get('pending')
+  async getPendingUsers(@Res() res: Response): Promise<{
+    statusCode: number;
+    data?: User[];
+    message?: string;
+  }> {
+    try {
+      const users = await this.userService.getPendingUsers();
+      const statusCode = users?.length > 0
+        ? HttpStatus.OK
+        : HttpStatus.NOT_FOUND;
+      return res.status(statusCode).send(users)
+    }
+    catch (err) {
+      throw new InternalServerErrorException(err.message, { cause: new Error(), description: 'Some error description' });
+    }
+  }
+
+  @Get(':id')
+  async getUserById(@Param('id', new ParseIntPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE })) id: number, @Res() res: Response): Promise<{
+    statusCode: number;
+    data?: User;
+    message?: string;
+  }> {
+    try {
+      const user = await this.userService.getUserById(id);
+      const statusCode = user ?
+        HttpStatus.OK
+        : HttpStatus.NOT_FOUND;
+      return res.status(statusCode).send(user);
+    }
+    catch (err) {
+      throw new InternalServerErrorException(err.message, { cause: new Error(), description: 'Some error description' });
+    }
+
+  }
+
+  @Get('profile')
+  @UseGuards(JwtAuthGuard)
+  async getProfile(@Req() req) {
+    return req.user; // req.user will be populated with the validated user object
+  }
+
+  @Post('register')
+  @HttpCode(HttpStatus.CREATED)
+  async register(@Body() registerUserDto: RegisterUserDto) {
+    return this.userService.registerNewUser(registerUserDto);
   }
 
   @Post('signin')
@@ -27,32 +90,18 @@ export class UserController {
     try {
       const { email, password } = signInDto;
       const { token, user } = await this.userService.signIn(email, password);
-
+      if (!user || !token)
+        throw new BadRequestException("invalid credentials", { cause: new Error(), description: 'Some error description' });
       return res
         .status(HttpStatus.OK)
         .header('x-auth-token', token)
         .header('access-control-expose-headers', 'x-auth-token')
         .json({ data: user, token });
-    } catch (error) {
-      return res.status(HttpStatus.UNAUTHORIZED).json({ error: error.message });
+    } catch (err) {
+      throw new InternalServerErrorException(err.message, { cause: new Error(), description: 'Some error description' });
     }
   }
 
-  @Get('pending')
-  async getPendingUsers() {
-    return this.userService.getPendingUsers();
-  }
-
-  @Get(':id')
-  async getUserById(@Param('id', ParseIntPipe) id: number): Promise<User | null> {
-    return this.userService.getUserById(id);
-  }
-
-  @Get('profile')
-  @UseGuards(JwtAuthGuard)
-  async getProfile(@Req() req) {
-    return req.user; // req.user will be populated with the validated user object
-  }
 
   @Patch(':id/status')
   async changeStatus(
@@ -64,23 +113,17 @@ export class UserController {
   }
 
   @Delete(':id')
-  async removeUser(@Param('id') id: string): Promise<User> {
-    const userId = parseInt(id);
-    return this.userService.removeUser(userId);
-  }
-
-  @Post('login')
-  async login(@Body() body: any, @Res({ passthrough: true }) res: Response) {
-    const { email, password } = body;
-
-    const user = await this.userService.findByEmail(email);
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res.status(HttpStatus.UNAUTHORIZED).json({ message: 'Invalid credentials' });
+  async removeUser(@Param('id') id: number): Promise<User> {
+    try {
+      const user = await this.userService.removeUser(id);
+      return user;
     }
-
-    const token = await this.authService.login(user);
-    return res.status(HttpStatus.OK).json(token);
+    catch (err) {
+      throw new InternalServerErrorException(err.message, { cause: new Error(), description: "Internal server error" });
+    }
   }
+
+
 
   @Put(':id')
   @UsePipes(new ValidationPipe({ transform: true }))

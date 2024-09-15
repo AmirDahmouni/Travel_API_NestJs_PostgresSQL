@@ -1,8 +1,9 @@
-import { HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from 'src/utils/prisma.service';
 import * as bcrypt from 'bcrypt'
 import { JwtService } from '@nestjs/jwt';
-import { User, UserStatus } from '@prisma/client';
+import { User, UserStatus, UserType } from '@prisma/client';
+import { RegisterUserDto } from './dto/create-user.dto';
 
 @Injectable()
 export class UserService {
@@ -12,9 +13,6 @@ export class UserService {
 
   async findAll(): Promise<User[]> {
     const users = await this.prisma.user.findMany();
-    if (!users) {
-      throw new HttpException('Users not found', HttpStatus.NOT_FOUND);
-    }
     return users;
   }
 
@@ -28,27 +26,52 @@ export class UserService {
     return user;
   }
 
+  async registerNewUser(registerUserDto: RegisterUserDto) {
+    const { email, firstname, lastname, password, telephone, isAdmin } = registerUserDto;
+
+    // Check if user already exists
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      throw new BadRequestException("User already registred", { cause: new Error(), description: 'Some error description' });
+    }
+
+    // Hash the password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Create the new user in the database
+    const newUser = await this.prisma.user.create({
+      data: {
+        firstname,
+        lastname,
+        email,
+        password: hashedPassword,
+        telephone,
+        isAdmin: isAdmin || false, // Set the user as admin if provided
+        type: UserType.ADMIN_TRAV, // Example logic to set user type
+      },
+    });
+
+    // Generate JWT token
+    const token = this.jwtService.sign({ id: newUser.id, email: newUser.email });
+
+    return {
+      user: newUser,
+      token,
+    };
+  }
+
   async signIn(email: string, password: string): Promise<{ token: string; user: User }> {
     const user = await this.findByEmail(email);
-    if (!user) {
-      throw new UnauthorizedException('User is invalid!');
-    }
-
-    if (user.status === 'pending') {
-      throw new UnauthorizedException('User not accepted yet');
-    }
-    if (user.status === 'refused') {
-      throw new UnauthorizedException('User refused');
-    }
-
+    if (!user) null
+    if (user.status === 'pending' || user.status === 'refused') return null
     const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) {
-      throw new UnauthorizedException('Password is invalid!');
-    }
-
+    if (!validPassword) return null
     const payload = { id: user.id, email: user.email, isAdmin: user.isAdmin };
     const token = this.jwtService.sign(payload);
-
     return { token, user };
   }
 
@@ -63,11 +86,9 @@ export class UserService {
         type: true,
       },
     });
-
-    if (!users || users.length === 0) {
-      throw new HttpException('No pending users found', HttpStatus.NOT_FOUND);
+    if (!users) {
+      throw new BadRequestException('Something bad happened', { cause: new Error(), description: 'Some error description' });
     }
-
     return users;
   }
 
@@ -93,16 +114,9 @@ export class UserService {
   }
 
   async removeUser(userId: number): Promise<User> {
-    // Find and delete the user
     const user = await this.prisma.user.delete({
       where: { id: userId },
     });
-
-    // If the user is not found, throw a 404 error
-    if (!user) {
-      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
-    }
-
     return user;
   }
 
