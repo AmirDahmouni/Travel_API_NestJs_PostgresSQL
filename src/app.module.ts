@@ -13,12 +13,14 @@ import { LoggerMiddleware } from './utils/logger.middleware';
 import helmet from 'helmet';
 import { AuthModule } from './auth/auth.module';
 import { AuthService } from './auth/auth.service';
+import { UserService } from './user/user.service';
+import { JwtService } from '@nestjs/jwt';
 
 @Module({
   imports: [UserModule, ApplicationModule, DocumentModule, TypeDocumentModule, DestinationModule, MessageModule, RequestModule, AuthModule],
   controllers: [AppController],
-  providers: [AppService, PrismaService, AuthService],
-  exports: [PrismaService]
+  providers: [AppService, PrismaService, AuthService, UserService, JwtService],
+  exports: [PrismaService, AuthModule]
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
