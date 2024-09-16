@@ -1,10 +1,9 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseFilters, UseGuards, ParseIntPipe, Req, ValidationPipe, UsePipes, HttpStatus, Res, Put, BadRequestException, InternalServerErrorException, HttpCode } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseFilters, UseGuards, ParseIntPipe, Req, ValidationPipe, UsePipes, HttpStatus, Res, Put, BadRequestException, InternalServerErrorException, HttpCode, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { UserService } from './user.service';
 import { HttpExceptionFilter } from 'src/filters/http-excpetion.filter';
 import { JwtAuthGuard } from 'src/guards/auth.guard';
 import * as bcrypt from 'bcrypt';
 import { SignInDto } from './dto/signin.dto';
-import { AuthService } from 'src/auth/auth.service';
 import { Response } from 'express';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User, UserStatus } from "@prisma/client"
@@ -14,7 +13,7 @@ import { RegisterUserDto } from './dto/create-user.dto';
 @UseFilters(HttpExceptionFilter)
 
 export class UserController {
-  constructor(private readonly userService: UserService, private readonly authService: AuthService) { }
+  constructor(private readonly userService: UserService) { }
 
   @Get('')
   async findAll(@Res() res: Response): Promise<{
@@ -86,12 +85,19 @@ export class UserController {
 
   @Post('signin')
   @UsePipes(new ValidationPipe({ transform: true })) // Apply the ValidationPipe
-  async signIn(@Body() signInDto: SignInDto, @Res() res: Response) {
+  async signIn(@Body() signInDto: SignInDto, @Res() res: Response): Promise<{
+    statusCode: number;
+    data?: User;
+    message?: string;
+  }> {
     try {
       const { email, password } = signInDto;
-      const { token, user } = await this.userService.signIn(email, password);
-      if (!user || !token)
-        throw new BadRequestException("invalid credentials", { cause: new Error(), description: 'Some error description' });
+      const data = await this.userService.signIn(email, password);
+      if (!data) throw new NotFoundException('user not found', { cause: new Error(), description: 'Some error description' })
+      if (data.error) throw new UnauthorizedException(data.error, { cause: new Error(), description: 'Some error description' })
+
+      const { token, user } = data
+
       return res
         .status(HttpStatus.OK)
         .header('x-auth-token', token)

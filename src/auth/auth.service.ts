@@ -12,15 +12,14 @@ export class AuthService {
   ) { }
 
   async validateUser(payload: JwtPayload) {
-    // Validate the user based on the payload from the token
-    return await this.userService.getUserById(payload.id);
+    return this.userService.getUserById(payload.id);
   }
 
   async login(user: any) {
-    // Create JWT token for the user
     const payload: JwtPayload = { id: user.id, email: user.email, isAdmin: user.isAdmin };
+    const token = await this.jwtService.signAsync(payload, { secret: process.env.JWT_SECRET });
     return {
-      access_token: this.jwtService.signAsync(payload, { secret: process.env.JWT_SECRET }),
+      token
     };
   }
 }

@@ -20,9 +20,7 @@ import { ConfigModule } from '@nestjs/config';
 @Module({
   imports: [
     UserModule, ApplicationModule, DocumentModule, TypeDocumentModule, DestinationModule, MessageModule, RequestModule, AuthModule,
-    ConfigModule.forRoot({
-      isGlobal: true, // This makes the config module available globally
-    })],
+    ConfigModule.forRoot({ isGlobal: true })],
   controllers: [AppController],
   providers: [AppService, PrismaService, AuthService, UserService, JwtService],
 })
