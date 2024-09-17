@@ -3,11 +3,11 @@ import { UserService } from './user.service';
 import { HttpExceptionFilter } from 'src/filters/http-excpetion.filter';
 import { JwtAuthGuard } from 'src/guards/auth.guard';
 import * as bcrypt from 'bcrypt';
-import { SignInDto } from './dto/signin.dto';
 import { Response } from 'express';
-import { UpdateUserDto } from './dto/update-user.dto';
 import { User, UserStatus } from "@prisma/client"
 import { RegisterUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { SignInDto } from './dto/signin.dto';
 
 @Controller('user')
 @UseFilters(HttpExceptionFilter)
@@ -111,15 +111,16 @@ export class UserController {
 
   @Patch(':id/status')
   async changeStatus(
-    @Param('id') id: string,
+    @Param('id', new ParseIntPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE }))
+    id: number,
     @Body('newStatus') newStatus: UserStatus,
   ) {
-    const userId = parseInt(id);
-    return this.userService.changeStatus(userId, newStatus);
+    return this.userService.changeStatus(id, newStatus);
   }
 
   @Delete(':id')
-  async removeUser(@Param('id') id: number): Promise<User> {
+  async removeUser(@Param('id', new ParseIntPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE }))
+  id: number): Promise<User> {
     try {
       const user = await this.userService.removeUser(id);
       return user;
@@ -134,7 +135,8 @@ export class UserController {
   @Put(':id')
   @UsePipes(new ValidationPipe({ transform: true }))
   async update(
-    @Param('id') id: number,
+    @Param('id', new ParseIntPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE }))
+    id: number,
     @Body() updateUserDto: UpdateUserDto,
     @Res({ passthrough: true }) res: Response
   ) {
