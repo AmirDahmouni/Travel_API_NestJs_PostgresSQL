@@ -4,11 +4,9 @@ import { HttpExceptionFilter } from 'src/filters/http-excpetion.filter';
 import { JwtAuthGuard } from 'src/guards/auth.guard';
 import * as bcrypt from 'bcrypt';
 import { Response } from 'express';
-import { User, UserStatus } from "@prisma/client"
-import { RegisterUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { SignInDto } from './dto/signin.dto';
-import { AuthGuard } from '@nestjs/passport';
+import { AdminTypeGuard } from 'src/guards/adminType.guard';
+import { User, UserStatus } from '@prisma/client';
 
 @Controller('user')
 @UseFilters(HttpExceptionFilter)
@@ -16,6 +14,7 @@ import { AuthGuard } from '@nestjs/passport';
 export class UserController {
   constructor(private readonly userService: UserService) { }
 
+  @UseGuards(AdminTypeGuard)
   @Get('')
   async findAll(@Res() res: Response): Promise<{
     statusCode: number;
@@ -76,7 +75,7 @@ export class UserController {
   async getProfile(@Req() req) {
     return req.user; // req.user will be populated with the validated user object
   }
-
+  @UseGuards(AdminTypeGuard)
   @Patch(':id/status')
   async changeStatus(
     @Param('id', new ParseIntPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE }))
@@ -86,6 +85,7 @@ export class UserController {
     return this.userService.changeStatus(id, newStatus);
   }
 
+  @UseGuards(AdminTypeGuard)
   @Delete(':id')
   async removeUser(@Param('id', new ParseIntPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE }))
   id: number): Promise<User> {
