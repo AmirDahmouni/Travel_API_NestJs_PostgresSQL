@@ -8,10 +8,11 @@ import { User, UserStatus } from "@prisma/client"
 import { RegisterUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { SignInDto } from './dto/signin.dto';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('user')
 @UseFilters(HttpExceptionFilter)
-
+@UseGuards(JwtAuthGuard)
 export class UserController {
   constructor(private readonly userService: UserService) { }
 
@@ -72,7 +73,6 @@ export class UserController {
   }
 
   @Get('profile')
-  @UseGuards(JwtAuthGuard)
   async getProfile(@Req() req) {
     return req.user; // req.user will be populated with the validated user object
   }
