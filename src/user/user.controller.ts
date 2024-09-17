@@ -77,38 +77,6 @@ export class UserController {
     return req.user; // req.user will be populated with the validated user object
   }
 
-  @Post('register')
-  @HttpCode(HttpStatus.CREATED)
-  async register(@Body() registerUserDto: RegisterUserDto) {
-    return this.userService.registerNewUser(registerUserDto);
-  }
-
-  @Post('signin')
-  @UsePipes(new ValidationPipe({ transform: true })) // Apply the ValidationPipe
-  async signIn(@Body() signInDto: SignInDto, @Res() res: Response): Promise<{
-    statusCode: number;
-    data?: User;
-    message?: string;
-  }> {
-    try {
-      const { email, password } = signInDto;
-      const data = await this.userService.signIn(email, password);
-      if (!data) throw new NotFoundException('user not found', { cause: new Error(), description: 'Some error description' })
-      if (data.error) throw new UnauthorizedException(data.error, { cause: new Error(), description: 'Some error description' })
-
-      const { token, user } = data
-
-      return res
-        .status(HttpStatus.OK)
-        .header('x-auth-token', token)
-        .header('access-control-expose-headers', 'x-auth-token')
-        .json({ data: user, token });
-    } catch (err) {
-      throw new InternalServerErrorException(err.message, { cause: new Error(), description: 'Some error description' });
-    }
-  }
-
-
   @Patch(':id/status')
   async changeStatus(
     @Param('id', new ParseIntPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE }))
