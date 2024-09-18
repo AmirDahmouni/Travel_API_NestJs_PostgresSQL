@@ -75,7 +75,6 @@ export class UserController {
   async getProfile(@Req() req) {
     return req.user; // req.user will be populated with the validated user object
   }
-  @UseGuards(AdminTypeGuard)
   @Patch(':id/status')
   async changeStatus(
     @Param('id', new ParseIntPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE }))

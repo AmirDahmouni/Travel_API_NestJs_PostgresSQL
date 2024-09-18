@@ -20,4 +20,8 @@ export class RegisterUserDto {
   @IsBoolean()
   @IsOptional()
   isAdmin?: boolean;
+
+  @IsString()
+  type: string;
+
 }

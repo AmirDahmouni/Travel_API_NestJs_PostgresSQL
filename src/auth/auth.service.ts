@@ -38,18 +38,18 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     // Create the new user in the database
-    const newUser = await this.prisma.user.create({
-      data: {
-        firstname,
-        lastname,
-        email,
-        password: hashedPassword,
-        telephone,
-        isAdmin: isAdmin || false, // Set the user as admin if provided
-        type: UserType.ADMIN_TRAV, // Example logic to set user type
-      },
-    });
+    let data = {
+      firstname,
+      lastname,
+      email,
+      password: hashedPassword,
+      telephone,
+      isAdmin: isAdmin || false, // Set the user as admin if provided
+      // Example logic to set user type
+    }
+    if (!isAdmin) data['type'] = registerUserDto.type;
 
+    const newUser = await this.prisma.user.create({ data });
     // Generate JWT token
     const token = this.jwtService.sign({ id: newUser.id, email: newUser.email }, {
       secret: process.env.JWT_SECRET
