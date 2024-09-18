@@ -131,7 +131,7 @@ export class UserController {
         password
       });
 
-      if (updatedUser) return res.status(HttpStatus.NO_CONTENT).send({ data: 'User data updated' });
+      if (updatedUser) return res.status(HttpStatus.ACCEPTED).send({ data: 'User data updated' });
       else return res.status(HttpStatus.BAD_REQUEST).json({ error: 'Failed to update user data' });
     } catch (err) {
       return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ error: err.message });

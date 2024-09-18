@@ -1,26 +1,44 @@
 import { Injectable } from '@nestjs/common';
+import { PrismaService } from 'src/utils/prisma.service';
 import { CreateTypeDocumentDto } from './dto/create-type-document.dto';
-import { UpdateTypeDocumentDto } from './dto/update-type-document.dto';
 
 @Injectable()
 export class TypeDocumentService {
-  create(createTypeDocumentDto: CreateTypeDocumentDto) {
-    return 'This action adds a new typeDocument';
+  constructor(private readonly prisma: PrismaService) { }
+
+  // Create a new TypeDocument
+  async createTypeDocument(data: CreateTypeDocumentDto) {
+    return this.prisma.typeDocument.create({
+      data: {
+        name: data.name,
+        extension: data.extension,
+        destinations: {
+          connect: data.destinations.map(id => ({ id })),
+        },
+      },
+    });
   }
 
-  findAll() {
-    return `This action returns all typeDocument`;
+  // Get all TypeDocuments (filtered by 'removed: false')
+  async getAllTypeDocuments() {
+    return this.prisma.typeDocument.findMany({
+      where: { removed: false },
+      select: { id: true, name: true, extension: true, removed: true }, // Exclude destinations
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} typeDocument`;
+  // Get a TypeDocument by ID
+  async getTypeDocumentById(id: number) {
+    return this.prisma.typeDocument.findUnique({
+      where: { id },
+    });
   }
 
-  update(id: number, updateTypeDocumentDto: UpdateTypeDocumentDto) {
-    return `This action updates a #${id} typeDocument`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} typeDocument`;
+  // Soft delete a TypeDocument (set removed = true)
+  async removeTypeDocument(id: number) {
+    return this.prisma.typeDocument.update({
+      where: { id },
+      data: { removed: true },
+    });
   }
 }

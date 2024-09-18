@@ -3,7 +3,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from '../user/user.service';
 import { JwtPayload } from './jwt-payload.interface';
-import { User, UserStatus, UserType } from '@prisma/client';
+import { User, UserStatus } from '@prisma/client';
 import { RegisterUserDto } from 'src/user/dto/create-user.dto';
 import * as bcrypt from 'bcrypt'
 import { PrismaService } from 'src/utils/prisma.service';
