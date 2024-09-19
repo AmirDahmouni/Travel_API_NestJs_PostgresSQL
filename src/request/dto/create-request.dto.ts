@@ -1,13 +1,15 @@
-import { IsString, IsInt, IsDateString, IsNotEmpty, MinLength, IsEnum } from 'class-validator';
+import { IsString, IsInt, IsDateString, IsNotEmpty, MinLength, IsEnum, IsOptional } from 'class-validator';
 
 export class CreateRequestDto {
   @IsInt()
   @IsNotEmpty()
+  @IsOptional()
   visitorId: number;
 
   @IsString()
   @MinLength(3)
   @IsNotEmpty()
+  @IsOptional()
   visit_to: string;
 
   @IsInt()
@@ -16,8 +18,10 @@ export class CreateRequestDto {
 
   @IsDateString()
   @IsNotEmpty()
-  date_visit: string;
+  @IsOptional()
+  date_visit: Date;
 
   @IsEnum(['pending', 'denied', 'approved'])
+  @IsOptional()
   status: string;
 }

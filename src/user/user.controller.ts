@@ -1,12 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseFilters, UseGuards, ParseIntPipe, Req, ValidationPipe, UsePipes, HttpStatus, Res, Put, BadRequestException, InternalServerErrorException, HttpCode, UnauthorizedException, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Body, Patch, Param, Delete, UseFilters, UseGuards, ParseIntPipe, Req, ValidationPipe, UsePipes, HttpStatus, Res, Put, InternalServerErrorException } from '@nestjs/common';
 import { UserService } from './user.service';
 import { HttpExceptionFilter } from 'src/filters/http-excpetion.filter';
 import { JwtAuthGuard } from 'src/guards/auth.guard';
 import * as bcrypt from 'bcrypt';
 import { Response } from 'express';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { AdminTypeGuard } from 'src/guards/adminType.guard';
 import { User, UserStatus } from '@prisma/client';
+import { AllowedTypes } from 'src/decorators/allowed-types.decorator';
 
 @Controller('user')
 @UseFilters(HttpExceptionFilter)
@@ -14,7 +14,7 @@ import { User, UserStatus } from '@prisma/client';
 export class UserController {
   constructor(private readonly userService: UserService) { }
 
-  @UseGuards(AdminTypeGuard)
+  @AllowedTypes("ADMIN")
   @Get('')
   async findAll(@Res() res: Response): Promise<{
     statusCode: number;
@@ -75,6 +75,7 @@ export class UserController {
   async getProfile(@Req() req) {
     return req.user; // req.user will be populated with the validated user object
   }
+
   @Patch(':id/status')
   async changeStatus(
     @Param('id', new ParseIntPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE }))
@@ -84,8 +85,9 @@ export class UserController {
     return this.userService.changeStatus(id, newStatus);
   }
 
-  @UseGuards(AdminTypeGuard)
+
   @Delete(':id')
+  @AllowedTypes("ADMIN")
   async removeUser(@Param('id', new ParseIntPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE }))
   id: number): Promise<User> {
     try {
@@ -96,7 +98,6 @@ export class UserController {
       throw new InternalServerErrorException(err.message, { cause: new Error(), description: "Internal server error" });
     }
   }
-
 
 
   @Put(':id')
