@@ -2,14 +2,16 @@ import { Controller, Get, Post, Param, Body, Patch, NotFoundException, InternalS
 import { TypeDocumentService } from './type-document.service';
 import { Prisma, TypeDocument } from '@prisma/client';
 import { CreateTypeDocumentDto } from './dto/create-type-document.dto';
-import { AdminTravGuard } from 'src/guards/adminTrav.guard';
 import { JwtAuthGuard } from 'src/guards/auth.guard';
 import { HttpExceptionFilter } from 'src/filters/http-excpetion.filter';
 import { Response } from 'express';
+import { AllowedTypes } from 'src/decorators/allowed-types.decorator';
 
 @Controller('type-documents')
 @UseFilters(HttpExceptionFilter)
-@UseGuards(JwtAuthGuard, AdminTravGuard)
+@UseGuards(JwtAuthGuard)
+@AllowedTypes("ADMIN")
+
 export class TypeDocumentController {
   constructor(private readonly typeDocumentService: TypeDocumentService) { }
 

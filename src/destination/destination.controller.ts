@@ -1,34 +1,77 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Post, Body, Req, Res, Param, Get, Put, Delete, Query, InternalServerErrorException, UseInterceptors, MaxFileSizeValidator, UploadedFile, ParseFilePipe, BadRequestException, UploadedFiles } from '@nestjs/common';
 import { DestinationService } from './destination.service';
-import { CreateDestinationDto } from './dto/create-destination.dto';
-import { UpdateDestinationDto } from './dto/update-destination.dto';
+import { Request, Response } from 'express';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
 
-@Controller('destination')
+@Controller('destinations')
 export class DestinationController {
-  constructor(private readonly destinationService: DestinationService) {}
+  constructor(private readonly destinationService: DestinationService) { }
 
   @Post()
-  create(@Body() createDestinationDto: CreateDestinationDto) {
-    return this.destinationService.create(createDestinationDto);
-  }
-
-  @Get()
-  findAll() {
-    return this.destinationService.findAll();
+  @UseInterceptors(FileInterceptor('file', {
+    storage: diskStorage({
+      destination: './uploads/destinations', // Destination directory
+      filename: (req, file, cb) => {
+        const fileName = `${Date.now()}-${file.originalname}`;
+        cb(null, fileName);
+      },
+    }),
+  }))
+  async createDestination(
+    @Body() body: any,
+    @UploadedFiles(new ParseFilePipe({
+      validators: [
+        new MaxFileSizeValidator({ maxSize: 1000 }),  // Ensure file size validation
+      ],
+    })) files: Array<Express.Multer.File> | Express.Multer.File, @Req() req: Request, @Res() res: Response) {
+    try {
+      const data = await this.destinationService.createDestination(body, files)
+      if (!data)
+        throw new BadRequestException("Failed to create TypeDocument", { cause: new Error(), description: 'Some error description' });
+    }
+    catch (err) {
+      throw new InternalServerErrorException(err.message, { cause: new Error(), description: "Internal server error" });
+    }
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.destinationService.findOne(+id);
+  async getDestinationById(@Param('id') id: number, @Res() res: Response) {
+    try {
+      const destination = await this.destinationService.getDestinationById(id);
+      return res.status(200).send({ data: destination });
+    } catch (error) {
+      throw new InternalServerErrorException(error.message);
+    }
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateDestinationDto: UpdateDestinationDto) {
-    return this.destinationService.update(+id, updateDestinationDto);
+  @Get()
+  async getAllDestinations(@Query('page') page = 1, @Query('keywords') keywords: string, @Res() res: Response) {
+    try {
+      const destinations = await this.destinationService.getAllDestinations(page, keywords);
+      return res.status(200).send({ data: destinations });
+    } catch (error) {
+      throw new InternalServerErrorException(error.message);
+    }
+  }
+
+  @Put(':id')
+  async updateDestination(@Param('id') id: number, @Body() body: any, @Req() req: Request, @Res() res: Response) {
+    try {
+      const updatedDestination = await this.destinationService.updateDestination(id, body, req.files);
+      return res.status(202).send({ data: updatedDestination });
+    } catch (error) {
+      throw new InternalServerErrorException(error.message);
+    }
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.destinationService.remove(+id);
+  async removeDestination(@Param('id') id: number, @Res() res: Response) {
+    try {
+      const removedDestination = await this.destinationService.removeDestination(id);
+      return res.status(200).send({ data: removedDestination });
+    } catch (error) {
+      throw new InternalServerErrorException(error.message);
+    }
   }
 }

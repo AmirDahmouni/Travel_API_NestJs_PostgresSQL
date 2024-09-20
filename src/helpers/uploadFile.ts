@@ -1,65 +1,41 @@
-import { promises as fs } from 'fs'; // Use promises API for async operations
-import mkdirp from 'mkdirp'; // Directory creation
+import * as path from 'path';
+import * as util from 'util';
+import * as fs from 'fs';
+import { mkdir } from 'fs/promises'; // Native Node.js promise-based mkdir
 
-interface UploadedFile {
-  mimetype: string;
-  size: number;
-  name: string;
-  mv: (path: string) => Promise<void>;
-}
+const writeFile = util.promisify(fs.writeFile); // Promisify fs.writeFile for easier async use
 
-// Upload an image file to a given directory with size and type validation
-export const uploadImage = async (
-  directory: string,
-  file: UploadedFile,
-  type: string = 'any',
-  maxSize: number = 5242880
-): Promise<string> => {
-  try {
-    if (!file.mimetype.startsWith('image/')) {
-      throw new Error('Invalid file extension. Must be an image.');
-    }
-    if (file.size > maxSize) {
-      throw new Error('File size exceeds the allowed limit.');
-    }
-
-    await mkdirp(directory); // Create directory if it doesn't exist
-    const filePath = `./${directory}/${file.name}`;
-    await file.mv(filePath); // Move file to the specified path
-    return filePath;
-  } catch (error) {
-    throw new Error(error.message); // Handle errors explicitly
-  }
-};
-
-// Upload a non-image file (like PDFs, docs) with size and type validation
 export const uploadFile = async (
   directory: string,
-  file: UploadedFile,
+  file: Express.Multer.File,
   type: string = 'any',
-  maxSize: number = 5242880
+  maxSize: number = 5242880 // Default max size to 5MB
 ): Promise<string> => {
   try {
-    if (!file.mimetype.startsWith('application/')) {
-      throw new Error('Invalid file type. Must be an application file.');
+    // Validate file type
+    if (!file.mimetype.startsWith(type)) {
+      throw new Error(`Invalid file type. Must be of type: ${type}`);
     }
+    // Validate file size
     if (file.size > maxSize) {
       throw new Error('File size exceeds the allowed limit.');
     }
+    mkdir(directory, { recursive: true });
 
-    await mkdirp(directory); // Create directory if it doesn't exist
-    const filePath = `./${directory}/${file.name}`;
-    await file.mv(filePath); // Move file to the specified path
+    const filePath = path.join(directory, file.originalname);
+    await writeFile(filePath, file.buffer);
+
     return filePath;
   } catch (error) {
-    throw new Error(error.message); // Handle errors explicitly
+    // Throw explicit errors for better handling
+    throw new Error(`File upload error: ${error.message}`);
   }
 };
 
 // Delete a file by its path
 export const deleteFile = async (path: string): Promise<boolean> => {
   try {
-    await fs.unlink(path); // Use promises API for async file removal
+    fs.unlink(path, () => console.log("success"));
     return true;
   } catch (error) {
     throw new Error('Error deleting the file: ' + error.message); // Handle errors
@@ -69,9 +45,12 @@ export const deleteFile = async (path: string): Promise<boolean> => {
 // Remove a directory and its contents
 export const removeDir = async (path: string): Promise<boolean> => {
   try {
-    await fs.rmdir(path, { recursive: true }); // Option to remove non-empty directories
+    fs.rmdir(path, () => console.log("success"));
     return true;
   } catch (error) {
     throw new Error('Error removing the directory: ' + error.message); // Handle errors
   }
 };
+
+
+
