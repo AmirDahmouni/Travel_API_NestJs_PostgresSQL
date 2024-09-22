@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Req, Res, Param, Get, Put, Delete, Query, InternalServerErrorException, UseInterceptors, MaxFileSizeValidator, UploadedFile, ParseFilePipe, BadRequestException, UploadedFiles } from '@nestjs/common';
+import { Controller, Post, Body, Req, Res, Param, Get, Put, Delete, Query, InternalServerErrorException, UseInterceptors, MaxFileSizeValidator, UploadedFile, ParseFilePipe, BadRequestException, UploadedFiles, HttpCode, HttpStatus } from '@nestjs/common';
 import { DestinationService } from './destination.service';
 import { Request, Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -29,6 +29,8 @@ export class DestinationController {
       const data = await this.destinationService.createDestination(body, files)
       if (!data)
         throw new BadRequestException("Failed to create TypeDocument", { cause: new Error(), description: 'Some error description' });
+      else
+        return res.status(HttpStatus.CREATED).send({ destination: data })
     }
     catch (err) {
       throw new InternalServerErrorException(err.message, { cause: new Error(), description: "Internal server error" });
@@ -49,7 +51,7 @@ export class DestinationController {
   async getAllDestinations(@Query('page') page = 1, @Query('keywords') keywords: string, @Res() res: Response) {
     try {
       const destinations = await this.destinationService.getAllDestinations(page, keywords);
-      return res.status(200).send({ data: destinations });
+      return res.status(HttpStatus.ACCEPTED).send({ data: destinations });
     } catch (error) {
       throw new InternalServerErrorException(error.message);
     }

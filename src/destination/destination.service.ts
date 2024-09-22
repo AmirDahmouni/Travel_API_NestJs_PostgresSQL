@@ -1,12 +1,14 @@
-import { Injectable, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, BadRequestException, InternalServerErrorException, HttpStatus, HttpException } from '@nestjs/common';
 import { PrismaService } from 'src/utils/prisma.service';
-import { uploadFile } from 'src/helpers/uploadFile'; // Assuming a helper class for file uploads
+import { deleteFile, removeDir, uploadFile } from 'src/helpers/uploadFile'; // Assuming a helper class for file uploads
+import { Destination, Prisma } from '@prisma/client';
+import extractNumber from 'src/helpers/extractNumber';
 
 @Injectable()
 export class DestinationService {
   constructor(private readonly prisma: PrismaService) { }
 
-  async createDestination(data: any, files: any): Promise<any> {
+  async createDestination(data: any, files: any): Promise<Destination | null> {
     const { name, description, directory, typeDocumentsIds } = data;
 
     // Check if the destination exists
@@ -57,19 +59,23 @@ export class DestinationService {
     });
 
     // Update type documents to link them with the new destination
-    await this.prisma.typeDocument.updateMany({
-      where: { id: { in: typeDocumentsIds } },
-      data: {
-        destinations: {
-          connect: { id: newDestination.id },
-        },
-      },
-    });
+    await Promise.all(
+      typeDocumentsIds.map(async (docId: number) => {
+        return this.prisma.typeDocument.update({
+          where: { id: docId },
+          data: {
+            destinations: {
+              connect: { id: newDestination.id },
+            },
+          },
+        });
+      })
+    );
 
     return newDestination;
   }
 
-  async getDestinationById(id: number): Promise<any> {
+  async getDestinationById(id: number): Promise<Destination | null> {
     try {
       return await this.prisma.destination.findUnique({
         where: { id },
@@ -80,20 +86,20 @@ export class DestinationService {
     }
   }
 
-  async getAllDestinations(page: number, keywords?: string): Promise<any> {
+  async getAllDestinations(page: number, keywords?: string): Promise<Destination[] | null> {
     try {
       const pageSize = 9;
       const skip = (page - 1) * pageSize;
 
-      const where = keywords
-        ? {
-          removed: false,
+      const where: Prisma.DestinationWhereInput = {
+        removed: false,
+        ...(keywords && {
           OR: [
             { name: { contains: keywords, mode: 'insensitive' } },
             { description: { contains: keywords, mode: 'insensitive' } },
           ],
-        }
-        : { removed: false };
+        }),
+      };
 
       return await this.prisma.destination.findMany({
         where,
@@ -106,63 +112,141 @@ export class DestinationService {
     }
   }
 
-  async updateDestination(id: number, data: any, files: any): Promise<any> {
+  async updateDestination(id: number, data: any, files: any): Promise<Destination | null> {
     try {
-      const existingDestination = await this.prisma.destination.findUnique({ where: { id } });
+      // Step 1: Check if the destination exists
+      const destination = await this.prisma.destination.findUnique({
+        where: { id },
+      });
 
-      if (!existingDestination) {
-        throw new BadRequestException("Destination doesn't exist");
+      if (!destination) return null;
+
+      // Step 2: Handle removed images
+      if (data?.removedImages) {
+        let removedImages = Array.isArray(data.removedImages)
+          ? data.removedImages
+          : [data.removedImages];
+
+        removedImages.forEach((image) => deleteFile(image));
+
+        await this.prisma.destination.update({
+          where: { id: id },
+          data: {
+            pictures: {
+              set: destination.pictures.filter(
+                (picture) => !removedImages.includes(picture),
+              ),
+            },
+          },
+        });
       }
 
-      // Handle image removal and uploading new images
-      if (data.removedImages) {
-        await this.fileHelper.deleteImages(data.removedImages);
+      // Step 3: Handle new image uploads
+      let newPictures: string[] = [];
+      if (files && files.length > 0) {
+        const directory = destination.directory;
+        let newImagesIndex = 1;
+
+        if (destination.pictures.length > 0) {
+          const lastImage = destination.pictures[destination.pictures.length - 1];
+          newImagesIndex = extractNumber(lastImage) + 1;
+        }
+
+        newPictures = await Promise.all(
+          files.map(async (imageFile, index) => {
+            const currentIndex = newImagesIndex + index;
+            imageFile.filename = `${currentIndex}.${imageFile.mimetype.split('/')[1]}`;
+            const newImage = await uploadFile(
+              `public/destinations/${directory}`,
+              imageFile,
+              'image',
+            );
+            if (newImage !== 'error') {
+              return newImage;
+            } else {
+              throw new Error('Failed to upload images');
+            }
+          }),
+        );
       }
 
-      let newPictures = [];
-      if (files?.images) {
-        const newImages = await this.fileHelper.uploadImages(files.images, `public/destinations/${existingDestination.directory}`);
-        newPictures = [...existingDestination.pictures, ...newImages];
-      }
-
+      // Step 4: Update destination with new data and pictures
       const updatedDestination = await this.prisma.destination.update({
         where: { id },
         data: {
           name: data.name,
           description: data.description,
-          requirements: { connect: data.typeDocumentsIds.map((id: number) => ({ id })) },
-          pictures: newPictures,
+          pictures: { push: newPictures },
+          requirements: {
+            set: data.typeDocumentsIds?.map((docId) => ({
+              id: parseInt(docId),
+            })),
+          },
         },
       });
 
-      return updatedDestination;
+      return updatedDestination
     } catch (error) {
-      throw new InternalServerErrorException(error.message);
+      throw new HttpException(
+        'Failed to update destination',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
   async removeDestination(id: number): Promise<any> {
     try {
-      const destination = await this.prisma.destination.findUnique({ where: { id } });
-      if (destination?.pictures) {
-        await this.fileHelper.deleteImages(destination.pictures);
+      // Step 1: Remove the destination reference from TypeDocuments
+      const typeDocuments = await this.prisma.typeDocument.findMany({
+        where: {
+          destinations: {
+            some: { id: id },
+          },
+        },
+      });
+
+      // Step 2: Find the destination and remove associated pictures
+      await Promise.all(
+        typeDocuments.map(async (typeDocument) => {
+          await this.prisma.typeDocument.update({
+            where: { id: typeDocument.id },
+            data: {
+              destinations: {
+                disconnect: { id: id },
+              },
+            },
+          });
+        })
+      );
+
+      const destination = await this.prisma.destination.findUnique({
+        where: { id: id },
+      });
+      if (!destination) {
+        throw new HttpException("Destination not found", HttpStatus.BAD_REQUEST);
       }
 
-      await this.prisma.typeDocument.updateMany({
-        where: { destinations: { some: { id } } },
-        data: { destinations: { disconnect: { id } } },
-      });
+      // Delete pictures associated with the destination
+      destination.pictures.forEach((picture) => deleteFile(picture));
 
-      return await this.prisma.destination.update({
-        where: { id },
+      // Remove the directory
+      removeDir(`./public/destinations/${destination.name}`);
+
+      // Step 3: Mark the destination as removed in the database
+      const updatedDestination = await this.prisma.destination.update({
+        where: { id: id },
         data: { removed: true },
       });
+
+      // Return the updated destination
+      return updatedDestination
     } catch (error) {
-      throw new InternalServerErrorException(error.message);
+      throw new HttpException(
+        'Failed to remove destination',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 }
-function uploadImage(arg0: string, images: any, arg2: string) {
-  throw new Error('Function not implemented.');
-}
+
 
