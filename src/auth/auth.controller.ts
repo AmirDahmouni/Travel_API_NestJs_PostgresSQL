@@ -6,7 +6,7 @@ import { RegisterUserDto } from 'src/user/dto/create-user.dto';
 import { SignInDto } from 'src/user/dto/signin.dto';
 import { AuthService } from './auth.service';
 
-@Controller('user')
+@Controller('auth')
 @UseFilters(HttpExceptionFilter)
 
 export class AuthController {
@@ -19,9 +19,14 @@ export class AuthController {
     data?: User;
     message?: string;
   }> {
-    const data = await this.authService.signup(registerUserDto);
-    const { token, user } = data;
-    return res.status(201).send({ token, user })
+    try {
+      const data = await this.authService.signup(registerUserDto);
+      const { token, user } = data;
+      return res.status(HttpStatus.CREATED).send({ token, user })
+    }
+    catch (err) {
+      throw new InternalServerErrorException(err.message, { cause: new Error(), description: 'Some error description' });
+    }
   }
 
   @Post('signin')

@@ -1,4 +1,11 @@
-import { IsEmail, IsString, IsBoolean, IsOptional, MinLength } from 'class-validator';
+import { IsEmail, IsString, IsBoolean, IsOptional, MinLength, IsEnum, Matches } from 'class-validator';
+
+enum UserType {
+  SOS = 'SOS',
+  VISITOR = 'VISITOR',
+  TRAVELER = 'TRAVELER',
+  ADMIN_TRAV = 'ADMIN_TRAV',
+}
 
 export class RegisterUserDto {
   @IsString()
@@ -12,6 +19,9 @@ export class RegisterUserDto {
 
   @IsString()
   @MinLength(6)
+  @Matches(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}$/, {
+    message: 'New password must be at least 8 characters long and include one uppercase letter, one lowercase letter, and one number',
+  })
   password: string;
 
   @IsString()
@@ -21,7 +31,7 @@ export class RegisterUserDto {
   @IsOptional()
   isAdmin?: boolean;
 
-  @IsString()
-  type: string;
-
+  @IsEnum(UserType)
+  @IsOptional()
+  type?: UserType;
 }

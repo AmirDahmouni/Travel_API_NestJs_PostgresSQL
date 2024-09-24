@@ -13,6 +13,7 @@ enum UserType {
   VISITOR
   TRAVELER
   ADMIN_TRAV
+  ADMIN
 }
 
 enum UserStatus {
@@ -28,7 +29,7 @@ model User {
   email           String      @unique @db.VarChar(255)
   password        String
   isAdmin         Boolean     @default(false)
-  type            UserType    @default(SOS)
+  type            UserType    @default(ADMIN)
   status          UserStatus  @default(pending)
   telephone       String      @db.VarChar(255)
   avatar          String      @default("default_pdp.png") @db.VarChar(255)

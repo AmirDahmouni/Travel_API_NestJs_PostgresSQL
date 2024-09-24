@@ -1,5 +1,5 @@
 -- CreateEnum
-CREATE TYPE "UserType" AS ENUM ('SOS', 'VISITOR', 'TRAVELER', 'ADMIN_TRAV');
+CREATE TYPE "UserType" AS ENUM ('SOS', 'VISITOR', 'TRAVELER', 'ADMIN_TRAV', 'ADMIN');
 
 -- CreateEnum
 CREATE TYPE "UserStatus" AS ENUM ('pending', 'accepted', 'refused');
@@ -21,7 +21,7 @@ CREATE TABLE "User" (
     "email" VARCHAR(255) NOT NULL,
     "password" TEXT NOT NULL,
     "isAdmin" BOOLEAN NOT NULL DEFAULT false,
-    "type" "UserType" NOT NULL DEFAULT 'SOS',
+    "type" "UserType" NOT NULL DEFAULT 'ADMIN',
     "status" "UserStatus" NOT NULL DEFAULT 'pending',
     "telephone" VARCHAR(255) NOT NULL,
     "avatar" VARCHAR(255) NOT NULL DEFAULT 'default_pdp.png',
@@ -48,6 +48,7 @@ CREATE TABLE "Document" (
     "id" SERIAL NOT NULL,
     "typeId" INTEGER NOT NULL,
     "path" TEXT NOT NULL,
+    "applicationId" INTEGER NOT NULL,
 
     CONSTRAINT "Document_pkey" PRIMARY KEY ("id")
 );
@@ -100,12 +101,6 @@ CREATE TABLE "Request" (
 );
 
 -- CreateTable
-CREATE TABLE "_ApplicationDocuments" (
-    "A" INTEGER NOT NULL,
-    "B" INTEGER NOT NULL
-);
-
--- CreateTable
 CREATE TABLE "_TypeDocumentDestinations" (
     "A" INTEGER NOT NULL,
     "B" INTEGER NOT NULL
@@ -113,12 +108,6 @@ CREATE TABLE "_TypeDocumentDestinations" (
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
-
--- CreateIndex
-CREATE UNIQUE INDEX "_ApplicationDocuments_AB_unique" ON "_ApplicationDocuments"("A", "B");
-
--- CreateIndex
-CREATE INDEX "_ApplicationDocuments_B_index" ON "_ApplicationDocuments"("B");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "_TypeDocumentDestinations_AB_unique" ON "_TypeDocumentDestinations"("A", "B");
@@ -136,6 +125,9 @@ ALTER TABLE "Application" ADD CONSTRAINT "Application_travelerId_fkey" FOREIGN K
 ALTER TABLE "Document" ADD CONSTRAINT "Document_typeId_fkey" FOREIGN KEY ("typeId") REFERENCES "TypeDocument"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Document" ADD CONSTRAINT "Document_applicationId_fkey" FOREIGN KEY ("applicationId") REFERENCES "Application"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Message" ADD CONSTRAINT "Message_applicationId_fkey" FOREIGN KEY ("applicationId") REFERENCES "Application"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -146,12 +138,6 @@ ALTER TABLE "Message" ADD CONSTRAINT "Message_travelerId_fkey" FOREIGN KEY ("tra
 
 -- AddForeignKey
 ALTER TABLE "Request" ADD CONSTRAINT "Request_visitorId_fkey" FOREIGN KEY ("visitorId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "_ApplicationDocuments" ADD CONSTRAINT "_ApplicationDocuments_A_fkey" FOREIGN KEY ("A") REFERENCES "Application"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "_ApplicationDocuments" ADD CONSTRAINT "_ApplicationDocuments_B_fkey" FOREIGN KEY ("B") REFERENCES "Document"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "_TypeDocumentDestinations" ADD CONSTRAINT "_TypeDocumentDestinations_A_fkey" FOREIGN KEY ("A") REFERENCES "Destination"("id") ON DELETE CASCADE ON UPDATE CASCADE;

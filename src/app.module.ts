@@ -16,15 +16,14 @@ import { AuthService } from './auth/auth.service';
 import { UserService } from './user/user.service';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigModule } from '@nestjs/config';
-import { FilesModule } from './files/files.module';
-import { FilesController } from './files/files.controller';
+import { AuthController } from './auth/auth.controller';
+
 
 @Module({
   imports: [
     UserModule, ApplicationModule, DocumentModule, TypeDocumentModule, DestinationModule, MessageModule, RequestModule, AuthModule,
-    ConfigModule.forRoot({ isGlobal: true }),
-    FilesModule],
-  controllers: [AppController, FilesController],
+    ConfigModule.forRoot({ isGlobal: true })],
+  controllers: [AppController, AuthController],
   providers: [AppService, PrismaService, AuthService, UserService, JwtService],
 })
 export class AppModule implements NestModule {

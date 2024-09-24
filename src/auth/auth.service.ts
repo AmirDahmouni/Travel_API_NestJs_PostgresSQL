@@ -3,7 +3,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from '../user/user.service';
 import { JwtPayload } from './jwt-payload.interface';
-import { User, UserStatus } from '@prisma/client';
+import { User, UserStatus, UserType } from '@prisma/client';
 import { RegisterUserDto } from 'src/user/dto/create-user.dto';
 import * as bcrypt from 'bcrypt'
 import { PrismaService } from 'src/utils/prisma.service';
@@ -44,10 +44,9 @@ export class AuthService {
       email,
       password: hashedPassword,
       telephone,
-      isAdmin: isAdmin || false, // Set the user as admin if provided
-      // Example logic to set user type
+      isAdmin: (isAdmin == false || !isAdmin) ? false : true,
+      type: UserType[registerUserDto.type]
     }
-    if (!isAdmin) data['type'] = registerUserDto.type;
 
     const newUser = await this.prisma.user.create({ data });
     // Generate JWT token

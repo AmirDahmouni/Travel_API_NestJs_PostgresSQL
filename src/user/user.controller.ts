@@ -21,17 +21,25 @@ export class UserController {
     data?: User[];
     message?: string;
   }> {
-    try {
-      const users = await this.userService.findAll();
-      const statusCode = users?.length > 0
-        ? HttpStatus.OK
-        : HttpStatus.NOT_FOUND;
-      return res.status(statusCode).send(users)
-    }
-    catch (err) {
-      throw new InternalServerErrorException(err.message, { cause: new Error(), description: 'Some error description' });
-    }
+    const users = await this.userService.findAll();
+    const statusCode = users?.length > 0
+      ? HttpStatus.OK
+      : HttpStatus.NOT_FOUND;
+    return res.status(statusCode).send(users)
+  }
 
+  @Get('profile')
+  async getProfile(@Req() req, @Res() res: Response):
+    Promise<{
+      statusCode: number;
+      data?: User;
+      message?: string;
+    }> {
+    const user = await this.userService.getUserById(req.user.id);
+    const statusCode = user ?
+      HttpStatus.OK
+      : HttpStatus.NOT_FOUND;
+    return res.status(statusCode).send(user);
   }
 
   @Get('pending')
@@ -40,103 +48,93 @@ export class UserController {
     data?: User[];
     message?: string;
   }> {
-    try {
-      const users = await this.userService.getPendingUsers();
-      const statusCode = users?.length > 0
-        ? HttpStatus.OK
-        : HttpStatus.NOT_FOUND;
-      return res.status(statusCode).send(users)
-    }
-    catch (err) {
-      throw new InternalServerErrorException(err.message, { cause: new Error(), description: 'Some error description' });
-    }
+    const users = await this.userService.getPendingUsers();
+    const statusCode = users?.length > 0
+      ? HttpStatus.OK
+      : HttpStatus.NOT_FOUND;
+    return res.status(statusCode).send(users)
   }
 
   @Get(':id')
-  async getUserById(@Param('id', new ParseIntPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE })) id: number, @Res() res: Response): Promise<{
+  async getUserById(
+    @Param('id', new ParseIntPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE })) id: number,
+    @Res() res: Response):
+    Promise<{
+      statusCode: number;
+      data?: User;
+      message?: string;
+    }> {
+    const user = await this.userService.getUserById(id);
+    const statusCode = user ?
+      HttpStatus.OK
+      : HttpStatus.NOT_FOUND;
+    return res.status(statusCode).send(user);
+  }
+
+
+  @Patch('status/:id')
+  async changeStatus(
+    @Param('id', new ParseIntPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE })) id: number,
+    @Body('newStatus') newStatus: UserStatus,
+    @Res() res: Response
+  ) {
+    const user = await this.userService.changeStatus(id, newStatus);
+    const statusCode = user ? HttpStatus.OK : HttpStatus.NOT_MODIFIED;
+    if (user)
+      return res.status(statusCode).send(user);
+  }
+
+  @Patch(':id')
+  async update(
+    @Param('id', new ParseIntPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE }))
+    id: number,
+    @Body() updateUserDto: UpdateUserDto,
+    @Res() res: Response
+  ): Promise<{
     statusCode: number;
     data?: User;
     message?: string;
   }> {
-    try {
-      const user = await this.userService.getUserById(id);
-      const statusCode = user ?
-        HttpStatus.OK
-        : HttpStatus.NOT_FOUND;
-      return res.status(statusCode).send(user);
+    const user = await this.userService.getUserById(id);
+    if (!user) return res.status(HttpStatus.BAD_REQUEST).send({ error: 'User not found!' });
+
+    let password = user.password;
+
+    if (updateUserDto.oldPassword && updateUserDto.newPassword) {
+      const validPassword = await bcrypt.compare(updateUserDto.oldPassword, user.password);
+      if (!validPassword) return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Old password is invalid!' });
+
+      const salt = await bcrypt.genSalt(10);
+      password = await bcrypt.hash(updateUserDto.newPassword, salt);
     }
-    catch (err) {
-      throw new InternalServerErrorException(err.message, { cause: new Error(), description: 'Some error description' });
-    }
 
-  }
+    const { firstname, lastname, email, telephone } = updateUserDto;
 
-  @Get('profile')
-  async getProfile(@Req() req) {
-    return req.user; // req.user will be populated with the validated user object
-  }
+    const updatedUser = await this.userService.update(id, {
+      firstname,
+      lastname,
+      email,
+      telephone,
+      password
+    });
 
-  @Patch(':id/status')
-  async changeStatus(
-    @Param('id', new ParseIntPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE }))
-    id: number,
-    @Body('newStatus') newStatus: UserStatus,
-  ) {
-    return this.userService.changeStatus(id, newStatus);
+    if (updatedUser) return res.status(HttpStatus.ACCEPTED).send({ data: 'User data updated' });
+    else return res.status(HttpStatus.BAD_REQUEST).send({ error: 'Failed to update user data' });
   }
 
 
   @Delete(':id')
   @AllowedTypes("ADMIN")
-  async removeUser(@Param('id', new ParseIntPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE }))
-  id: number): Promise<User> {
-    try {
-      const user = await this.userService.removeUser(id);
-      return user;
-    }
-    catch (err) {
-      throw new InternalServerErrorException(err.message, { cause: new Error(), description: "Internal server error" });
-    }
-  }
-
-
-  @Put(':id')
-  @UsePipes(new ValidationPipe({ transform: true }))
-  async update(
-    @Param('id', new ParseIntPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE }))
-    id: number,
-    @Body() updateUserDto: UpdateUserDto,
-    @Res({ passthrough: true }) res: Response
-  ) {
-    try {
-      const user = await this.userService.getUserById(id);
-      if (!user) return res.status(HttpStatus.BAD_REQUEST).json({ error: 'User not found!' });
-
-      let password = user.password;
-
-      if (updateUserDto.oldPassword && updateUserDto.newPassword) {
-        const validPassword = await bcrypt.compare(updateUserDto.oldPassword, user.password);
-        if (!validPassword) return res.status(HttpStatus.BAD_REQUEST).json({ error: 'Old password is invalid!' });
-
-        const salt = await bcrypt.genSalt(10);
-        password = await bcrypt.hash(updateUserDto.newPassword, salt);
-      }
-
-      const { firstname, lastname, email, telephone } = updateUserDto;
-
-      const updatedUser = await this.userService.update(id, {
-        firstname,
-        lastname,
-        email,
-        telephone,
-        password
-      });
-
-      if (updatedUser) return res.status(HttpStatus.ACCEPTED).send({ data: 'User data updated' });
-      else return res.status(HttpStatus.BAD_REQUEST).json({ error: 'Failed to update user data' });
-    } catch (err) {
-      throw new InternalServerErrorException(err.message, { cause: new Error(), description: "Internal server error" });
-    }
+  async removeUser(
+    @Param('id', new ParseIntPipe({ errorHttpStatusCode: HttpStatus.NOT_ACCEPTABLE })) id: number,
+    @Res() res: Response):
+    Promise<{
+      statusCode: number;
+      data?: User;
+      message?: string;
+    }> {
+    const user = await this.userService.removeUser(id);
+    return res.status(HttpStatus.ACCEPTED).send(user);
   }
 
 
