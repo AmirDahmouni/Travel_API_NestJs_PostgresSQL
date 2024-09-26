@@ -63,7 +63,7 @@ export class AuthService {
   async signIn(email: string, password: string): Promise<{ token?: string; user?: User, error?: String } | null> {
     const user = await this.userService.findByEmail(email);
     if (!user) return null;
-    if (user.status == UserStatus.refused || user.status == UserStatus.accepted) return { error: "pending user" }
+    if (user.status == UserStatus.pending) return { error: "pending user" }
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) return { error: "Password incorrect" }
     const payload = { id: user.id, email: user.email, isAdmin: user.isAdmin };

@@ -1,26 +1,75 @@
-import { Injectable } from '@nestjs/common';
+// document.service.ts
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from 'src/utils/prisma.service';
+import { Document } from '@prisma/client';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { UpdateDocumentDto } from './dto/update-document.dto';
 
 @Injectable()
 export class DocumentService {
-  create(createDocumentDto: CreateDocumentDto) {
-    return 'This action adds a new document';
+  constructor(private readonly prisma: PrismaService) { }
+
+  async createDocument(inputDdata: CreateDocumentDto): Promise<Document> {
+    return this.prisma.document.create({
+      data: {
+        typeId: inputDdata.type,
+        path: inputDdata.path,
+        applicationId: inputDdata.application,
+      }
+    });
   }
 
-  findAll() {
-    return `This action returns all document`;
+  async getAllDocuments() {
+    return this.prisma.document.findMany({
+      include: {
+        type: true, // Include related TypeDocument
+        application: true, // Include related Application
+      },
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} document`;
+  async getDocumentById(id: number) {
+    const document = await this.prisma.document.findUnique({
+      where: { id },
+      include: {
+        type: true,
+        application: true,
+      },
+    });
+
+    if (!document) {
+      throw new NotFoundException('Document not found');
+    }
+
+    return document;
   }
 
-  update(id: number, updateDocumentDto: UpdateDocumentDto) {
-    return `This action updates a #${id} document`;
+  async updateDocument(id: number, inputDdata: UpdateDocumentDto) {
+    const documentExists = await this.prisma.document.findUnique({ where: { id } });
+
+    if (!documentExists) {
+      throw new NotFoundException('Document not found');
+    }
+
+    return this.prisma.document.update({
+      where: { id },
+      data: {
+        typeId: inputDdata.type,
+        path: inputDdata.path,
+        applicationId: inputDdata.application,
+      },
+    });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} document`;
+  async deleteDocument(id: number) {
+    const documentExists = await this.prisma.document.findUnique({ where: { id } });
+
+    if (!documentExists) {
+      throw new NotFoundException('Document not found');
+    }
+
+    return this.prisma.document.delete({
+      where: { id },
+    });
   }
 }
