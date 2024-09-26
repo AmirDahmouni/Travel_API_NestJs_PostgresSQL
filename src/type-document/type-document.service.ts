@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/utils/prisma.service';
 import { CreateTypeDocumentDto } from './dto/create-type-document.dto';
-import { TypeDocument } from '@prisma/client';
+import { DocumentExtension, TypeDocument } from '@prisma/client';
 
 @Injectable()
 export class TypeDocumentService {
@@ -9,10 +9,13 @@ export class TypeDocumentService {
 
   // Create a new TypeDocument
   async createTypeDocument(data: CreateTypeDocumentDto): Promise<TypeDocument | null> {
+    console.log('====================================');
+    console.log(data);
+    console.log('====================================');
     return this.prisma.typeDocument.create({
       data: {
         name: data.name,
-        extension: data.extension,
+        extension: data.extension as DocumentExtension,
         removed: false,
       },
     });

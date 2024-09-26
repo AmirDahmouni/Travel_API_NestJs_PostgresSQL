@@ -35,6 +35,9 @@ export const uploadFile = async (
 // Delete a file by its path
 export const deleteFile = async (path: string): Promise<boolean> => {
   try {
+    console.log('====================================');
+    console.log(path);
+    console.log('====================================');
     fs.unlink(path, () => console.log("success"));
     return true;
   } catch (error) {
@@ -45,6 +48,9 @@ export const deleteFile = async (path: string): Promise<boolean> => {
 // Remove a directory and its contents
 export const removeDir = async (path: string): Promise<boolean> => {
   try {
+    console.log('====================================');
+    console.log(path);
+    console.log('====================================');
     fs.rmdir(path, () => console.log("success"));
     return true;
   } catch (error) {

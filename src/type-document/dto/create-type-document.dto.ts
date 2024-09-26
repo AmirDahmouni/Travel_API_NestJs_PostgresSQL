@@ -1,7 +1,6 @@
-import { DocumentExtension } from "@prisma/client";
 
 export class CreateTypeDocumentDto {
   name: string;
-  extension: DocumentExtension;
+  extension: string;
   // Adjust according to your enum or type
 }

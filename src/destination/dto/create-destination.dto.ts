@@ -14,12 +14,10 @@ export class CreateDestinationDto {
   directory: string;
 
   @IsArray()
-  pictures: string[];
+  imagePaths: string[];
 
   @IsArray()
   @IsNotEmpty()
-  requirementIds: number[]; // Array of TypeDocument IDs
+  typeDocumentsIds: number[]; // Array of TypeDocument IDs
 
-  @IsBoolean()
-  removed: boolean;
 }

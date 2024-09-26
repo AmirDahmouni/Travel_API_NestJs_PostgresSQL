@@ -16,7 +16,7 @@ export class TypeDocumentController {
   constructor(private readonly typeDocumentService: TypeDocumentService) { }
 
   @Post()
-  async createTypeDocument(@Body() data: CreateTypeDocumentDto, @Res() res: Response): Promise<{
+  async createTypeDocument(@Body() data: any, @Res() res: Response): Promise<{
     statusCode?: number;
     data?: TypeDocument;
     message?: string;
