@@ -1,5 +1,5 @@
 import { Controller, Post, Body, UseFilters, ValidationPipe, UsePipes, HttpStatus, Res, InternalServerErrorException, HttpCode, UnauthorizedException, NotFoundException } from '@nestjs/common';
-import { HttpExceptionFilter } from 'src/filters/http-excpetion.filter';
+import { HttpExceptionFilter } from 'src/filters/http-exception.filter';
 import { Response } from 'express';
 import { User } from "@prisma/client"
 import { RegisterUserDto } from 'src/user/dto/create-user.dto';

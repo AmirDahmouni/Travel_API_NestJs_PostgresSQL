@@ -1,12 +1,7 @@
-import { Controller, Post, Body, Req, Res, Param, Get, Put, Delete, Query, InternalServerErrorException, UseInterceptors, MaxFileSizeValidator, UploadedFile, ParseFilePipe, BadRequestException, UploadedFiles, HttpCode, HttpStatus, NotFoundException } from '@nestjs/common';
+import { Controller, Post, Body, Req, Res, Param, Get, Put, Delete, Query, UseInterceptors, HttpStatus, NotFoundException, BadRequestException } from '@nestjs/common';
 import { DestinationService } from './destination.service';
-import { Request, Response } from 'express';
-import { FilesInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
+import { Response } from 'express';
 import { CreateDestinationDto } from './dto/create-destination.dto';
-import path, { extname } from 'path';
-import * as fs from 'fs';
-import { NotFoundError } from 'rxjs';
 import { UpdateDestinationDto } from './dto/update-destination.dto';
 import { DestinationFilesInterceptor } from 'src/interceptors/destination-upload.interceptor';
 
@@ -51,8 +46,6 @@ export class DestinationController {
     DestinationFilesInterceptor.getInterceptor('pictures', 10, './uploads/destinations', 5 * 1024 * 1024)
   )
   async updateDestination(@Param('id') id: number, @Body() body: UpdateDestinationDto, @Res() res: Response) {
-    console.log('====================================');
-    console.log(body);
     const updatedDestination = await this.destinationService.updateDestination(id, body, body.imagePaths);
     if (!updatedDestination)
       throw new NotFoundException(`Destination not updated`, { cause: new Error(), description: 'Some error description' });

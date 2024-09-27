@@ -1,9 +1,8 @@
-import { Controller, Get, Post, Param, Body, Patch, NotFoundException, InternalServerErrorException, UseFilters, UseGuards, BadRequestException, Res, HttpStatus, ParseIntPipe, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, NotFoundException, UseFilters, UseGuards, BadRequestException, Res, HttpStatus, ParseIntPipe, Delete } from '@nestjs/common';
 import { TypeDocumentService } from './type-document.service';
-import { Prisma, TypeDocument } from '@prisma/client';
-import { CreateTypeDocumentDto } from './dto/create-type-document.dto';
+import { TypeDocument } from '@prisma/client';
 import { JwtAuthGuard } from 'src/guards/auth.guard';
-import { HttpExceptionFilter } from 'src/filters/http-excpetion.filter';
+import { HttpExceptionFilter } from 'src/filters/http-exception.filter';
 import { Response } from 'express';
 import { AllowedTypes } from 'src/decorators/allowed-types.decorator';
 

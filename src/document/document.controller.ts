@@ -6,7 +6,7 @@ import { CreateDocumentDto } from './dto/create-document.dto';
 import { UpdateDocumentDto } from './dto/update-document.dto';
 import { AllowedTypes } from 'src/decorators/allowed-types.decorator';
 import { JwtAuthGuard } from 'src/guards/auth.guard';
-import { HttpExceptionFilter } from 'src/filters/http-excpetion.filter';
+import { HttpExceptionFilter } from 'src/filters/http-exception.filter';
 import { Document } from '@prisma/client';
 
 @Controller('documents')

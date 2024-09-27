@@ -5,7 +5,7 @@ import { RequestStatus } from '@prisma/client';
 import { UpdateRequestDto } from './dto/update-request.dto';
 import { JwtAuthGuard } from 'src/guards/auth.guard';
 import { AllowedTypes } from 'src/decorators/allowed-types.decorator';
-import { HttpExceptionFilter } from 'src/filters/http-excpetion.filter';
+import { HttpExceptionFilter } from 'src/filters/http-exception.filter';
 
 @Controller('requests')
 @UseFilters(HttpExceptionFilter)

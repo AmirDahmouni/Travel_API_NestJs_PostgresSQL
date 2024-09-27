@@ -11,8 +11,11 @@ import {
 import { Server, Socket } from 'socket.io';
 import { PrismaService } from 'src/utils/prisma.service';
 import { Message } from '@prisma/client';
+import { UsePipes, ValidationPipe } from '@nestjs/common';
 
-@WebSocketGateway({
+@WebSocketGateway(81, {
+  namespace: 'messaging',
+  transports: ['websocket'],
   cors: {
     origin: '*', // Adjust as needed for your CORS policy
   },
@@ -25,6 +28,7 @@ export class MessagingGateway implements OnGatewayInit, OnGatewayConnection, OnG
   // Called when the gateway is initialized
   afterInit(server: Server) {
     console.log('WebSocket gateway initialized');
+    server.emit("New user connected ");
   }
 
   // Called when a client connects
@@ -38,11 +42,12 @@ export class MessagingGateway implements OnGatewayInit, OnGatewayConnection, OnG
   }
 
   // Listen for incoming messages from clients
+  @UsePipes(new ValidationPipe())
   @SubscribeMessage('sendMessage')
   async handleMessage(
     @MessageBody() data: { adminTravelerId: number; travelerId: number; content: string },
     @ConnectedSocket() client: Socket
-  ): Promise<void> {
+  ): Promise<Message> {
     const { adminTravelerId, travelerId, content } = data;
 
     // Save the message in the database using Prisma
@@ -51,16 +56,19 @@ export class MessagingGateway implements OnGatewayInit, OnGatewayConnection, OnG
         adminTravelerId,
         travelerId,
         content,
-        applicationId: 1, // Assuming you're hardcoding applicationId for now; modify as needed
+        applicationId: 1
       },
     });
 
     // Emit the message back to the specific rooms or users (traveler and admin)
     this.server.to(`user_${adminTravelerId}`).emit('receiveMessage', newMessage);
     this.server.to(`user_${travelerId}`).emit('receiveMessage', newMessage);
+
+    return newMessage
   }
 
   // Join a room based on adminTravelerId or travelerId
+  @UsePipes(new ValidationPipe())
   @SubscribeMessage('joinRoom')
   handleJoinRoom(@MessageBody() data: { userId: number }, @ConnectedSocket() client: Socket): void {
     const { userId } = data;

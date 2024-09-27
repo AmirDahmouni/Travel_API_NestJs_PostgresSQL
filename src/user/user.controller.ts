@@ -1,6 +1,6 @@
 import { Controller, Get, Body, Patch, Param, Delete, UseFilters, UseGuards, ParseIntPipe, Req, ValidationPipe, UsePipes, HttpStatus, Res, Put, InternalServerErrorException } from '@nestjs/common';
 import { UserService } from './user.service';
-import { HttpExceptionFilter } from 'src/filters/http-excpetion.filter';
+import { HttpExceptionFilter } from 'src/filters/http-exception.filter';
 import { JwtAuthGuard } from 'src/guards/auth.guard';
 import * as bcrypt from 'bcrypt';
 import { Response } from 'express';
