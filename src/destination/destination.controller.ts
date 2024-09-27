@@ -7,6 +7,8 @@ import { CreateDestinationDto } from './dto/create-destination.dto';
 import path, { extname } from 'path';
 import * as fs from 'fs';
 import { NotFoundError } from 'rxjs';
+import { UpdateDestinationDto } from './dto/update-destination.dto';
+import { DestinationFilesInterceptor } from 'src/interceptors/destination-upload.interceptor';
 
 @Controller('destinations')
 export class DestinationController {
@@ -14,44 +16,10 @@ export class DestinationController {
 
   @Post()
   @UseInterceptors(
-    FilesInterceptor('pictures', 10, {
-      storage: diskStorage({
-        destination: (req, file, cb) => {
-          const folderName = req.body.directory;
-          const dir = `./uploads/destinations/${folderName}`
-          // Check if the directory exists, create it if it doesn't
-          fs.mkdir(dir, { recursive: true }, (err) => {
-            if (err) {
-              return cb(new Error('Failed to create directory'), dir);
-            }
-            cb(null, dir); // Specify your destination folder for file uploads
-          });
-        },
-        filename: (req, file, cb) => {
-          // Use index from req.fileIndex
-          const fileIndex = Math.round(Math.random() * 1e9); // Start from 0 if fileIndex is undefined
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-          const fileExt = extname(file.originalname); // Use extname for original file extension
-
-          // Create a filename with the index
-          const fileName = `${file.fieldname}-${fileIndex + 1}-${uniqueSuffix}${fileExt}`;
-          if (!req.body.imagePaths) {
-            req.body.imagePaths = [];
-          }
-
-          // Append the new image path to req.body.imagePaths
-          const filePath = `destinations/${req.body.name}/${fileName}`
-          req.body.imagePaths.push(filePath);
-
-          cb(null, fileName);
-        },
-      }),
-      limits: { fileSize: 5 * 1024 * 1024 } // 5MB file size limit
-    }),
+    DestinationFilesInterceptor.getInterceptor('pictures', 10, './uploads/destinations', 5 * 1024 * 1024)
   )
   async createDestination(
     @Body() body: CreateDestinationDto,
-    @UploadedFiles() files: Array<Express.Multer.File>,
     @Res() res: Response) {
     const data = await this.destinationService.createDestination(body, body.imagePaths)
     if (!data)
@@ -79,8 +47,13 @@ export class DestinationController {
   }
 
   @Put(':id')
-  async updateDestination(@Param('id') id: number, @Body() body: any, @Req() req: Request, @Res() res: Response) {
-    const updatedDestination = await this.destinationService.updateDestination(id, body, req.files);
+  @UseInterceptors(
+    DestinationFilesInterceptor.getInterceptor('pictures', 10, './uploads/destinations', 5 * 1024 * 1024)
+  )
+  async updateDestination(@Param('id') id: number, @Body() body: UpdateDestinationDto, @Res() res: Response) {
+    console.log('====================================');
+    console.log(body);
+    const updatedDestination = await this.destinationService.updateDestination(id, body, body.imagePaths);
     if (!updatedDestination)
       throw new NotFoundException(`Destination not updated`, { cause: new Error(), description: 'Some error description' });
     return res.status(HttpStatus.ACCEPTED).send({ data: updatedDestination });

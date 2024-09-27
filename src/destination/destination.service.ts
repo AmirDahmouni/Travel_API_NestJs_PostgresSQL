@@ -8,51 +8,45 @@ import extractNumber from 'src/helpers/extractNumber';
 export class DestinationService {
   constructor(private readonly prisma: PrismaService) { }
 
-  async createDestination(data: any, paths: any): Promise<Destination | null> {
-    try {
-      const { name, description, directory, typeDocumentsIds } = data;
+  async createDestination(data: any, paths: string[]): Promise<Destination | null> {
+    const { name, description, directory, typeDocumentsIds } = data;
 
-      // Check if the destination exists
-      const destinationExists = await this.prisma.destination.findFirst({
-        where: { name },
-      });
+    // Check if the destination exists
+    const destinationExists = await this.prisma.destination.findFirst({
+      where: { name },
+    });
 
-      if (destinationExists) return null
+    if (destinationExists) return null
 
-      // Create new destination
-      const newDestination = await this.prisma.destination.create({
-        data: {
-          name,
-          description,
-          directory,
-          pictures: paths, // You can adapt this if there are multiple files
-          requirements: {
-            connect: typeDocumentsIds.map((id: any) => ({ id: Number(id) })),
-          },
+    // Create new destination
+    const newDestination = await this.prisma.destination.create({
+      data: {
+        name,
+        description,
+        directory,
+        pictures: paths, // You can adapt this if there are multiple files
+        requirements: {
+          connect: typeDocumentsIds.map((id: any) => ({ id: Number(id) })),
         },
-      });
+      },
+    });
 
-      // Update type documents to link them with the new destination
-      await Promise.all(
-        typeDocumentsIds.map(async (docId: number) => {
-          return this.prisma.typeDocument.update({
-            where: { id: Number(docId) },
-            data: {
-              destinations: {
-                connect: { id: newDestination.id },
-              },
+    // Update type documents to link them with the new destination
+    await Promise.all(
+      typeDocumentsIds.map(async (docId: number) => {
+        return this.prisma.typeDocument.update({
+          where: { id: Number(docId) },
+          data: {
+            destinations: {
+              connect: { id: newDestination.id },
             },
-          });
-        })
-      ).catch(err => console.log(err));
+          },
+        });
+      })
+    ).catch(err => console.log(err));
 
-      return newDestination;
-    }
-    catch (err) {
-      console.log('====================================');
-      console.log(err.message);
-      console.log('====================================');
-    }
+    return newDestination;
+
   }
 
   async getDestinationById(id: number): Promise<Destination | null> {
@@ -92,7 +86,7 @@ export class DestinationService {
     }
   }
 
-  async updateDestination(id: number, data: any, files: any): Promise<Destination | null> {
+  async updateDestination(id: number, data: any, paths: string[]): Promise<Destination | null> {
     // Step 1: Check if the destination exists
     const destination = await this.prisma.destination.findUnique({
       where: { id },
@@ -100,13 +94,17 @@ export class DestinationService {
 
     if (!destination) return null;
 
+    console.log('====================================');
+    console.log(data.removedImages);
+    console.log('====================================');
+
     // Step 2: Handle removed images
     if (data?.removedImages) {
       let removedImages = Array.isArray(data.removedImages)
         ? data.removedImages
         : [data.removedImages];
 
-      removedImages.forEach((image) => deleteFile(image));
+      removedImages.forEach((image) => deleteFile(`./uploads/${image}`));
 
       await this.prisma.destination.update({
         where: { id: id },
@@ -120,42 +118,14 @@ export class DestinationService {
       });
     }
 
-    // Step 3: Handle new image uploads
-    let newPictures: string[] = [];
-    if (files && files.length > 0) {
-      const directory = destination.directory;
-      let newImagesIndex = 1;
 
-      if (destination.pictures.length > 0) {
-        const lastImage = destination.pictures[destination.pictures.length - 1];
-        newImagesIndex = extractNumber(lastImage) + 1;
-      }
-
-      newPictures = await Promise.all(
-        files.map(async (imageFile, index) => {
-          const currentIndex = newImagesIndex + index;
-          imageFile.filename = `${currentIndex}.${imageFile.mimetype.split('/')[1]}`;
-          const newImage = await uploadFile(
-            `public/destinations/${directory}`,
-            imageFile,
-            'image',
-          );
-          if (newImage !== 'error') {
-            return newImage;
-          } else {
-            throw new Error('Failed to upload images');
-          }
-        }),
-      );
-    }
-
-    // Step 4: Update destination with new data and pictures
+    // Step 3: Update destination with new data and pictures
     const updatedDestination = await this.prisma.destination.update({
       where: { id },
       data: {
         name: data.name,
         description: data.description,
-        pictures: { push: newPictures },
+        pictures: { push: paths || [] },
         requirements: {
           set: data.typeDocumentsIds?.map((docId) => ({
             id: parseInt(docId),

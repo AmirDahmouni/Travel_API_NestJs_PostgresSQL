@@ -1,60 +1,47 @@
-import {
-  Injectable,
-  NestInterceptor,
-  ExecutionContext,
-  CallHandler,
-  BadRequestException,
-} from '@nestjs/common';
-import { Observable } from 'rxjs';
-import { uploadFile } from 'src/helpers/UploadFile'; // Your custom upload helper
+import { Injectable, ExecutionContext, CallHandler } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
+import * as fs from 'fs';
 
 @Injectable()
-export class FileUploadInterceptor implements NestInterceptor {
-  async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<any>> {
-    const request = context.switchToHttp().getRequest();
-    const files = request.files; // Assuming files are part of the request (e.g., via Multer)
-    const directory = request.body.directory; // You might get this from the body or elsewhere
-    console.log('====================================');
-    console.log(request.body);
-    console.log('====================================');
-
-    let paths: string[] = [];
-
-
-    // Check if 'files.images' is an array
-    if (Array.isArray(files)) {
-      console.log('====================================');
-      console.log(files);
-      console.log('====================================');
-      paths = await Promise.all(
-        files.map(async (imageFile, index) => {
-
-          try {
-            imageFile.name = `${index + 1}.${imageFile.mimetype.split('/')[1]}`;
-            const new_image = await uploadFile(`destinations/${directory}`, imageFile, 'image');
-            if (new_image !== 'error') {
-              return new_image;
+export class DestinationFilesInterceptor {
+  static getInterceptor(
+    fieldName: string,
+    maxCount: number,
+    baseDestination: string,
+    maxFileSize: number
+  ) {
+    return FilesInterceptor(fieldName, maxCount, {
+      storage: diskStorage({
+        destination: (req, file, cb) => {
+          const folderName = req.body.directory;
+          const dir = `${baseDestination}/${folderName}`;
+          // Create directory if it doesn't exist
+          fs.mkdir(dir, { recursive: true }, (err) => {
+            if (err) {
+              return cb(new Error('Failed to create directory'), dir);
             }
-          } catch (error) {
-            throw new BadRequestException(error.message, 'Failed to upload image');
+            cb(null, dir);
+          });
+        },
+        filename: (req, file, cb) => {
+          const fileIndex = Math.round(Math.random() * 1e9);
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const fileExt = extname(file.originalname);
+          const fileName = `${file.fieldname}-${fileIndex + 1}-${uniqueSuffix}${fileExt}`;
+
+          if (!req.body.imagePaths) {
+            req.body.imagePaths = [];
           }
-        }),
-      );
-    } else {
-      try {
-        files.images.name = `1.${files.images.mimetype.split('/')[1]}`;
-        const new_image = await uploadFile(`destinations/${directory}`, files.images, 'image');
-        if (new_image !== 'error') {
-          paths.push(new_image);
-        }
-      } catch (error) {
-        throw new BadRequestException(error.message, 'Failed to upload image');
-      }
-    }
+          const folderName = req.body.directory;
+          const filePath = `uploads/${folderName}/${fileName}`;
+          req.body.imagePaths.push(filePath);
 
-    // Add the paths to the request body so the controller can access it
-    request.body.imagePaths = paths;
-
-    return next.handle(); // Proceed to the controller
+          cb(null, fileName);
+        },
+      }),
+      limits: { fileSize: maxFileSize },
+    });
   }
 }

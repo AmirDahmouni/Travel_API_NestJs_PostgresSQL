@@ -1,4 +1,4 @@
-import { IsString, IsArray, IsBoolean, IsNotEmpty, MinLength } from 'class-validator';
+import { IsString, IsArray, IsBoolean, IsNotEmpty, MinLength, IsOptional } from 'class-validator';
 
 export class CreateDestinationDto {
   @IsString()
@@ -14,7 +14,8 @@ export class CreateDestinationDto {
   directory: string;
 
   @IsArray()
-  imagePaths: string[];
+  @IsOptional()
+  imagePaths?: string[];
 
   @IsArray()
   @IsNotEmpty()
